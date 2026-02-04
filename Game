@@ -1,0 +1,2183 @@
+index.html
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>АЭС: Симулятор технического обслуживания</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #0a1930 0%, #152642 100%);
+            color: #e0f2fe;
+            line-height: 1.6;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        header {
+            text-align: center;
+            padding: 20px 0 30px;
+            margin-bottom: 30px;
+            background: rgba(15, 23, 42, 0.9);
+            border-radius: 15px;
+            border: 2px solid #1e3a8a;
+            position: relative;
+        }
+        
+        h1 {
+            color: #38bdf8;
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            text-shadow: 0 0 15px rgba(56, 189, 248, 0.5);
+        }
+        
+        .subtitle {
+            color: #7dd3fc;
+            font-size: 1.1rem;
+            max-width: 900px;
+            margin: 0 auto;
+        }
+        
+        .reset-btn {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(239, 68, 68, 0.2);
+            color: #fca5a5;
+            border: 1px solid #ef4444;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.3s;
+        }
+        
+        .reset-btn:hover {
+            background: rgba(239, 68, 68, 0.3);
+            transform: translateY(-2px);
+        }
+        
+        .game-layout {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 25px;
+            margin-bottom: 30px;
+        }
+        
+        @media (max-width: 1200px) {
+            .game-layout {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        .model-container {
+            background: rgba(15, 23, 42, 0.9);
+            border-radius: 15px;
+            padding: 20px;
+            border: 1px solid #334155;
+            min-height: 600px;
+        }
+        
+        .control-panel {
+            background: rgba(15, 23, 42, 0.9);
+            border-radius: 15px;
+            padding: 25px;
+            border: 1px solid #334155;
+            overflow-y: auto;
+            max-height: 700px;
+        }
+        
+        h2 {
+            color: #38bdf8;
+            margin-bottom: 20px;
+            font-size: 1.8rem;
+            border-bottom: 1px solid #334155;
+            padding-bottom: 10px;
+        }
+        
+        h3 {
+            color: #7dd3fc;
+            margin: 15px 0 10px;
+        }
+        
+        /* Контейнер для 3D модели */
+        #model-container-3d {
+            width: 100%;
+            height: 500px;
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 20px 0;
+            border: 2px solid #334155;
+            position: relative;
+        }
+        
+        /* Информация о компоненте */
+        .component-info {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(15, 23, 42, 0.95);
+            border-radius: 10px;
+            padding: 20px;
+            max-width: 400px;
+            border: 2px solid #38bdf8;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.5);
+            display: none;
+            z-index: 100;
+        }
+        
+        .component-info.active {
+            display: block;
+            animation: fadeIn 0.3s ease-out;
+        }
+        
+        .info-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 15px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid #334155;
+        }
+        
+        .info-icon {
+            font-size: 2rem;
+            color: #38bdf8;
+            margin-right: 15px;
+        }
+        
+        .info-title {
+            font-weight: bold;
+            color: #7dd3fc;
+            font-size: 1.3rem;
+        }
+        
+        .info-content {
+            color: #cbd5e1;
+            line-height: 1.7;
+        }
+        
+        .info-close {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: none;
+            border: none;
+            color: #94a3b8;
+            font-size: 1.5rem;
+            cursor: pointer;
+        }
+        
+        /* Задания */
+        .tasks-container {
+            margin-top: 20px;
+        }
+        
+        .task-card {
+            background: rgba(30, 41, 59, 0.7);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+            cursor: pointer;
+            transition: all 0.3s;
+            border-left: 5px solid #38bdf8;
+        }
+        
+        .task-card:hover {
+            background: rgba(56, 189, 248, 0.1);
+            transform: translateX(5px);
+        }
+        
+        .task-card.active {
+            background: rgba(56, 189, 248, 0.15);
+            border-left-color: #0ea5e9;
+        }
+        
+        .task-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        
+        .task-title {
+            font-weight: bold;
+            color: #7dd3fc;
+            font-size: 1.1rem;
+        }
+        
+        .task-status {
+            font-size: 0.8rem;
+            padding: 4px 10px;
+            border-radius: 12px;
+            background: #334155;
+        }
+        
+        .task-status.completed {
+            background: #065f46;
+            color: #d1fae5;
+        }
+        
+        .task-status.available {
+            background: #0369a1;
+            color: #e0f2fe;
+        }
+        
+        .task-status.failed {
+            background: #7f1d1d;
+            color: #fecaca;
+        }
+        
+        .task-desc {
+            color: #cbd5e1;
+            margin-bottom: 15px;
+            font-size: 0.95rem;
+        }
+        
+        .task-meta {
+            display: flex;
+            justify-content: space-between;
+            color: #94a3b8;
+            font-size: 0.9rem;
+        }
+        
+        /* Прогресс */
+        .progress-summary {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            margin-top: 25px;
+        }
+        
+        .progress-card {
+            background: rgba(30, 41, 59, 0.7);
+            padding: 15px;
+            border-radius: 12px;
+            text-align: center;
+            border-top: 4px solid #38bdf8;
+        }
+        
+        .progress-value {
+            font-size: 1.8rem;
+            font-weight: bold;
+            color: #38bdf8;
+            margin: 10px 0;
+        }
+        
+        .progress-label {
+            color: #cbd5e1;
+            font-size: 0.9rem;
+        }
+        
+        /* Диалог теста */
+        .dialog {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.85);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+            backdrop-filter: blur(5px);
+        }
+        
+        .dialog.active {
+            display: flex;
+        }
+        
+        .dialog-content {
+            background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+            width: 90%;
+            max-width: 800px;
+            border-radius: 20px;
+            padding: 30px;
+            border: 1px solid #334155;
+            max-height: 85vh;
+            overflow-y: auto;
+        }
+        
+        .dialog-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 25px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid #334155;
+        }
+        
+        .close-btn {
+            background: none;
+            border: none;
+            color: #94a3b8;
+            font-size: 2rem;
+            cursor: pointer;
+            transition: color 0.3s;
+        }
+        
+        .close-btn:hover {
+            color: #f87171;
+        }
+        
+        /* Таймер теста */
+        .test-timer {
+            background: rgba(56, 189, 248, 0.1);
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+            margin-bottom: 25px;
+            border: 2px solid #38bdf8;
+        }
+        
+        .timer-display {
+            font-size: 2.5rem;
+            font-weight: bold;
+            color: #38bdf8;
+            margin: 10px 0;
+        }
+        
+        .timer-label {
+            color: #7dd3fc;
+            font-size: 1rem;
+        }
+        
+        /* Прогресс теста */
+        .test-progress {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 25px;
+            padding: 15px;
+            background: rgba(15, 23, 42, 0.8);
+            border-radius: 10px;
+        }
+        
+        .progress-bar {
+            flex: 1;
+            height: 10px;
+            background: #334155;
+            border-radius: 5px;
+            overflow: hidden;
+            margin: 0 15px;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(to right, #38bdf8, #0ea5e9);
+            width: 0%;
+            transition: width 0.5s;
+        }
+        
+        /* Вопросы теста */
+        .question-container {
+            background: rgba(15, 23, 42, 0.8);
+            padding: 25px;
+            border-radius: 15px;
+            margin-bottom: 25px;
+        }
+        
+        .question-counter {
+            color: #94a3b8;
+            margin-bottom: 10px;
+            font-size: 0.95rem;
+        }
+        
+        .question-text {
+            font-size: 1.2rem;
+            color: #7dd3fc;
+            margin-bottom: 25px;
+            line-height: 1.5;
+        }
+        
+        /* Варианты ответов */
+        .answer-options {
+            display: grid;
+            gap: 15px;
+        }
+        
+        .answer-option {
+            background: rgba(30, 41, 59, 0.7);
+            padding: 18px;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s;
+            border: 2px solid transparent;
+            display: flex;
+            align-items: center;
+        }
+        
+        .answer-option:hover:not(.disabled) {
+            background: rgba(56, 189, 248, 0.1);
+            border-color: #38bdf8;
+        }
+        
+        .answer-option.selected {
+            background: rgba(56, 189, 248, 0.2);
+            border-color: #38bdf8;
+        }
+        
+        .answer-option.correct {
+            background: rgba(16, 185, 129, 0.2);
+            border-color: #10b981;
+        }
+        
+        .answer-option.incorrect {
+            background: rgba(239, 68, 68, 0.2);
+            border-color: #ef4444;
+        }
+        
+        .answer-option.disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+        
+        .answer-letter {
+            display: inline-block;
+            width: 30px;
+            height: 30px;
+            background: #475569;
+            color: white;
+            border-radius: 50%;
+            text-align: center;
+            line-height: 30px;
+            margin-right: 15px;
+            font-weight: bold;
+            flex-shrink: 0;
+        }
+        
+        /* Пояснение к ответу */
+        .explanation-container {
+            background: rgba(56, 189, 248, 0.1);
+            padding: 20px;
+            border-radius: 10px;
+            margin-top: 20px;
+            border-left: 4px solid #38bdf8;
+            display: none;
+        }
+        
+        .explanation-container.active {
+            display: block;
+            animation: fadeIn 0.5s ease-out;
+        }
+        
+        .explanation-title {
+            color: #38bdf8;
+            font-weight: bold;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .explanation-text {
+            color: #cbd5e1;
+            line-height: 1.6;
+        }
+        
+        /* Попытки */
+        .attempts-counter {
+            background: rgba(245, 158, 11, 0.1);
+            padding: 10px 15px;
+            border-radius: 8px;
+            text-align: center;
+            margin-top: 15px;
+            border: 1px solid #f59e0b;
+            color: #fbbf24;
+        }
+        
+        /* Кнопки */
+        .test-actions {
+            display: flex;
+            justify-content: center;
+            margin-top: 25px;
+            gap: 15px;
+        }
+        
+        .action-btn {
+            padding: 15px 30px;
+            border-radius: 10px;
+            border: none;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 1.1rem;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            min-width: 160px;
+        }
+        
+        .primary-btn {
+            background: linear-gradient(135deg, #38bdf8, #0ea5e9);
+            color: #0f172a;
+        }
+        
+        .secondary-btn {
+            background: rgba(71, 85, 105, 0.7);
+            color: #e0f2fe;
+        }
+        
+        .action-btn:hover:not(:disabled) {
+            transform: translateY(-3px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+        }
+        
+        .action-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        /* Результаты теста */
+        .results-container {
+            text-align: center;
+            padding: 30px;
+        }
+        
+        .result-icon {
+            font-size: 4rem;
+            margin-bottom: 20px;
+        }
+        
+        .result-success .result-icon {
+            color: #10b981;
+        }
+        
+        .result-failure .result-icon {
+            color: #ef4444;
+        }
+        
+        .result-title {
+            font-size: 2rem;
+            margin-bottom: 15px;
+        }
+        
+        .result-stats {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+            margin: 25px 0;
+            max-width: 400px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        
+        .stat-card {
+            background: rgba(30, 41, 59, 0.7);
+            padding: 15px;
+            border-radius: 10px;
+        }
+        
+        .stat-value {
+            font-size: 1.8rem;
+            font-weight: bold;
+            color: #38bdf8;
+            margin: 5px 0;
+        }
+        
+        .stat-label {
+            color: #cbd5e1;
+            font-size: 0.9rem;
+        }
+        
+        /* Анимации */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .fade-in {
+            animation: fadeIn 0.5s ease-out;
+        }
+        
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+        
+        .pulse {
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
+            20%, 40%, 60%, 80% { transform: translateX(5px); }
+        }
+        
+        .shake {
+            animation: shake 0.5s;
+        }
+        
+        footer {
+            text-align: center;
+            margin-top: 40px;
+            padding: 25px;
+            border-top: 1px solid #334155;
+            color: #94a3b8;
+            font-size: 0.9rem;
+            background: rgba(15, 23, 42, 0.8);
+            border-radius: 15px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header class="fade-in">
+            <button class="reset-btn" id="reset-stats">
+                <i class="fas fa-redo"></i> Сбросить статистику
+            </button>
+            <h1><i class="fas fa-atom"></i> Симулятор технического обслуживания АЭС</h1>
+            <p class="subtitle">Выполняйте проверки оборудования атомной станции. Кликайте на компоненты в 3D модели для изучения, затем проводите технический осмотр.</p>
+        </header>
+        
+        <div class="game-layout">
+            <main class="model-container fade-in">
+                <h2>3D модель АЭС</h2>
+                <p>Кликайте на компоненты для получения информации. Вращайте модель мышкой.</p>
+                
+                <!-- Контейнер для Three.js -->
+                <div id="model-container-3d"></div>
+                
+                <!-- Информация о компоненте -->
+                <div class="component-info" id="component-info">
+                    <button class="info-close" id="info-close">&times;</button>
+                    <div class="info-header">
+                        <div class="info-icon" id="info-icon">
+                            <i class="fas fa-info-circle"></i>
+                        </div>
+                        <div>
+                            <div class="info-title" id="info-title">Название компонента</div>
+                            <div id="info-subtitle">Назначение и функции</div>
+                        </div>
+                    </div>
+                    <div class="info-content" id="info-content">
+                        Описание компонента будет здесь.
+                    </div>
+                </div>
+            </main>
+            
+            <aside class="control-panel fade-in">
+                <h2>Регламентные работы</h2>
+                <p>Выберите задание для проведения технического осмотра:</p>
+                
+                <div class="tasks-container" id="tasks-container">
+                    <!-- Задания будут добавлены через JavaScript -->
+                </div>
+                
+                <div class="progress-summary">
+                    <div class="progress-card">
+                        <div class="progress-label">Выполнено проверок</div>
+                        <div class="progress-value" id="completed-tests">0/8</div>
+                    </div>
+                    <div class="progress-card">
+                        <div class="progress-label">Квалификация</div>
+                        <div class="progress-value" id="skill-level">1</div>
+                    </div>
+                    <div class="progress-card">
+                        <div class="progress-label">Успешность ТО</div>
+                        <div class="progress-value" id="average-score">0%</div>
+                    </div>
+                </div>
+            </aside>
+        </div>
+        
+        <footer class="fade-in">
+            <p>Симулятор технического обслуживания атомной электростанции | Все процедуры основаны на реальных регламентах ТО</p>
+            <p style="margin-top: 15px; font-size: 0.85rem;">Для вращения модели: ЛКМ + движение мыши. Для приближения: колесо мыши.</p>
+        </footer>
+    </div>
+    
+    <!-- Диалог теста -->
+    <div class="dialog" id="test-dialog">
+        <div class="dialog-content">
+            <div class="dialog-header">
+                <h2 id="test-title">Технический осмотр оборудования</h2>
+                <button class="close-btn" id="close-dialog">&times;</button>
+            </div>
+            
+            <div id="test-in-progress">
+                <!-- Таймер -->
+                <div class="test-timer">
+                    <div class="timer-label">Время на проверку:</div>
+                    <div class="timer-display" id="timer">08:00</div>
+                </div>
+                
+                <!-- Прогресс теста -->
+                <div class="test-progress">
+                    <div>Задание <span id="current-question">1</span> из <span id="total-questions">5</span></div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="progress-fill" style="width: 20%"></div>
+                    </div>
+                    <div>Попытки: <span id="test-attempts">3</span></div>
+                </div>
+                
+                <!-- Вопрос -->
+                <div class="question-container">
+                    <div class="question-counter" id="question-counter">Задание 1 из 5</div>
+                    <div class="question-text" id="question-text">Текст задания будет здесь</div>
+                    
+                    <!-- Варианты ответов -->
+                    <div class="answer-options" id="answer-options">
+                        <!-- Ответы будут добавлены динамически -->
+                    </div>
+                    
+                    <!-- Пояснение к ответу -->
+                    <div class="explanation-container" id="explanation-container">
+                        <div class="explanation-title">
+                            <i class="fas fa-info-circle"></i> Пояснение
+                        </div>
+                        <div class="explanation-text" id="explanation-text">
+                            Пояснение к правильному ответу будет здесь.
+                        </div>
+                    </div>
+                    
+                    <!-- Счетчик попыток -->
+                    <div class="attempts-counter" id="attempts-counter">
+                        Осталось попыток: <span id="attempts-left">3</span>
+                    </div>
+                </div>
+                
+                <!-- Кнопки -->
+                <div class="test-actions">
+                    <button class="action-btn primary-btn" id="next-question" style="display: none;">
+                        <i class="fas fa-arrow-right"></i> Далее
+                    </button>
+                    <button class="action-btn primary-btn" id="submit-answer" disabled>
+                        <i class="fas fa-check-circle"></i> Проверить
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Результаты теста -->
+            <div id="test-results" style="display: none;">
+                <div class="results-container" id="results-container">
+                    <!-- Результаты будут добавлены динамически -->
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // Данные игры
+        const gameState = {
+            completedTests: 0,
+            totalTests: 8,
+            skillLevel: 1,
+            totalScore: 0,
+            averageScore: 0,
+            currentTest: null,
+            testInProgress: false
+        };
+        
+        // Технические осмотры оборудования
+        const tests = [
+            {
+                id: 1,
+                title: 'Осмотр корпуса реактора',
+                description: 'Проверка целостности, контроль толщины стенок, поиск коррозии',
+                component: 'reactor',
+                timeLimit: 480, // 8 минут
+                questions: 5,
+                difficulty: 'medium'
+            },
+            {
+                id: 2,
+                title: 'Диагностика главного насоса',
+                description: 'Вибродиагностика, проверка температуры подшипников, анализ расхода',
+                component: 'main-pump',
+                timeLimit: 420, // 7 минут
+                questions: 5,
+                difficulty: 'hard'
+            },
+            {
+                id: 3,
+                title: 'Контроль парогенератора',
+                description: 'Проверка трубок на течи, контроль отложений, тепловой анализ',
+                component: 'steam-generator',
+                timeLimit: 480,
+                questions: 5,
+                difficulty: 'medium'
+            },
+            {
+                id: 4,
+                title: 'Осмотр турбины',
+                description: 'Балансировка ротора, контроль вибрации, проверка лопаток',
+                component: 'turbine',
+                timeLimit: 420,
+                questions: 5,
+                difficulty: 'hard'
+            },
+            {
+                id: 5,
+                title: 'Проверка системы управления',
+                description: 'Калибровка датчиков, проверка цепей управления, тест защиты',
+                component: 'control-system',
+                timeLimit: 360, // 6 минут
+                questions: 5,
+                difficulty: 'medium'
+            },
+            {
+                id: 6,
+                title: 'Контроль системы охлаждения',
+                description: 'Проверка градирен, анализ температуры, контроль химического состава',
+                component: 'cooling-system',
+                timeLimit: 420,
+                questions: 5,
+                difficulty: 'medium'
+            },
+            {
+                id: 7,
+                title: 'Осмотр трансформаторов',
+                description: 'Анализ газов в масле, контроль температуры, проверка изоляции',
+                component: 'transformer',
+                timeLimit: 360,
+                questions: 5,
+                difficulty: 'medium'
+            },
+            {
+                id: 8,
+                title: 'Контроль дозиметрической аппаратуры',
+                description: 'Поверка дозиметров, калибровка, проверка герметичности',
+                component: 'dosimetry',
+                timeLimit: 300, // 5 минут
+                questions: 5,
+                difficulty: 'easy'
+            }
+        ];
+        
+        // Вопросы для технических осмотров (убраны задания на сопоставление)
+        const questionsDatabase = [
+            // Осмотр корпуса реактора
+            {
+                testId: 1,
+                type: 'theory',
+                question: 'При визуальном осмотре корпуса реактора обнаружены пятна темного цвета диаметром 2-3 мм. Что это может быть?',
+                answers: [
+                    'Начальная стадия коррозии',
+                    'Капли масла',
+                    'Радиоактивное загрязнение',
+                    'Загрязнение пылью'
+                ],
+                correct: 0,
+                explanation: 'Темные пятна на корпусе реактора могут указывать на начало коррозионного процесса. Это требует проведения дополнительных измерений толщины стенки в этом месте ультразвуковым методом.'
+            },
+            {
+                testId: 1,
+                type: 'calculation',
+                question: 'Номинальная толщина стенки корпуса реактора - 200 мм. При ультразвуковом контроле получены значения: 198 мм, 199 мм, 197 мм. Допустимый износ - не более 5%. Рассчитайте процент износа по минимальному значению.',
+                answers: [
+                    '1.5%',
+                    '2.0%',
+                    '2.5%',
+                    '1.0%'
+                ],
+                correct: 0,
+                explanation: 'Минимальное значение 197 мм. Износ = (200 - 197) / 200 × 100% = 1.5%. Результат в пределах нормы (меньше 5%).'
+            },
+            {
+                testId: 1,
+                type: 'theory',
+                question: 'Какой метод контроля является наиболее точным для измерения толщины стенки реактора?',
+                answers: [
+                    'Ультразвуковая дефектоскопия',
+                    'Визуальный осмотр',
+                    'Радиографический контроль',
+                    'Капиллярный контроль'
+                ],
+                correct: 0,
+                explanation: 'Ультразвуковая дефектоскопия позволяет точно измерить толщину стенки и обнаружить внутренние дефекты без разрушающего контроля.'
+            },
+            {
+                testId: 1,
+                type: 'theory',
+                question: 'Какова периодичность проведения полного технического осмотра корпуса реактора?',
+                answers: [
+                    'Каждые 4 года',
+                    'Каждый год',
+                    'Каждые 10 лет',
+                    'Только после остановки'
+                ],
+                correct: 0,
+                explanation: 'Полный технический осмотр проводится каждые 4 года в соответствии с регламентом эксплуатации ядерных установок.'
+            },
+            {
+                testId: 1,
+                type: 'calculation',
+                question: 'При измерении температуры корпуса реактора получены значения: 285°C, 287°C, 286°C. Номинальная температура - 290°C. Рассчитайте среднее отклонение от номинала.',
+                answers: [
+                    '4°C',
+                    '3.7°C',
+                    '5°C',
+                    '2.5°C'
+                ],
+                correct: 0,
+                explanation: 'Среднее значение = (285+287+286)/3 = 286°C. Отклонение = 290 - 286 = 4°C. Результат в пределах нормы.'
+            },
+            
+            // Диагностика главного циркуляционного насоса
+            {
+                testId: 2,
+                type: 'theory',
+                question: 'При вибродиагностике ГЦН обнаружена вибрация 45 мкм на частоте, соответствующей оборотам ротора. Что это означает?',
+                answers: [
+                    'Дисбаланс ротора',
+                    'Износ подшипников',
+                    'Кавитация',
+                    'Расцентровка'
+                ],
+                correct: 0,
+                explanation: 'Вибрация на частоте оборотов ротора обычно указывает на дисбаланс. Требуется балансировка ротора.'
+            },
+            {
+                testId: 2,
+                type: 'calculation',
+                question: 'Температура подшипника ГЦН повысилась с 55°C до 68°C за месяц. Нормальная температура - 45-60°C. На сколько процентов превышена максимальная норма?',
+                answers: [
+                    '13.3%',
+                    '15%',
+                    '10%',
+                    '20%'
+                ],
+                correct: 0,
+                explanation: 'Превышение = (68 - 60) / 60 × 100% = 13.3%. Это указывает на возможный износ подшипника и требует дополнительной диагностики.'
+            },
+            {
+                testId: 2,
+                type: 'theory',
+                question: 'Что необходимо проверить при осмотре уплотнений ГЦН?',
+                answers: [
+                    'Отсутствие течей',
+                    'Температуру уплотнений',
+                    'Давление уплотнительной воды',
+                    'Все вышеперечисленное'
+                ],
+                correct: 3,
+                explanation: 'Все параметры важны для оценки состояния уплотнений. Течи могут привести к потере теплоносителя, а перегрев - к повреждению уплотнений.'
+            },
+            {
+                testId: 2,
+                type: 'calculation',
+                question: 'Мощность электродвигателя ГЦН - 6 МВт. При измерениях потребляемая мощность составила 6.3 МВт. Рассчитайте отклонение в процентах.',
+                answers: [
+                    '5%',
+                    '4.8%',
+                    '3%',
+                    '6%'
+                ],
+                correct: 0,
+                explanation: 'Отклонение = (6.3 - 6) / 6 × 100% = 5%. Допустимое отклонение обычно составляет до 10%, поэтому результат в норме.'
+            },
+            {
+                testId: 2,
+                type: 'theory',
+                question: 'Что указывает на износ подшипников ГЦН?',
+                answers: [
+                    'Увеличение вибрации и температуры',
+                    'Уменьшение расхода теплоносителя',
+                    'Повышение давления',
+                    'Снижение напряжения'
+                ],
+                correct: 0,
+                explanation: 'Износ подшипников приводит к росту вибрации и температуры. Это основные диагностические признаки.'
+            },
+            
+            // Контроль парогенератора
+            {
+                testId: 3,
+                type: 'theory',
+                question: 'При осмотре парогенератора обнаружено снижение теплопередачи на 8%. Что может быть причиной?',
+                answers: [
+                    'Отложения на трубках',
+                    'Утечка теплоносителя',
+                    'Неисправность датчиков',
+                    'Снижение мощности реактора'
+                ],
+                correct: 0,
+                explanation: 'Отложения снижают теплопередачу и требуют химической очистки. Регулярный контроль отложений обязателен.'
+            },
+            {
+                testId: 3,
+                type: 'calculation',
+                question: 'Номинальная толщина трубок парогенератора - 2.5 мм. При измерении получены значения: 2.4 мм, 2.3 мм, 2.4 мм. Допустимый износ - 20%. Рассчитайте процент износа по минимальному значению.',
+                answers: [
+                    '8%',
+                    '12%',
+                    '4%',
+                    '6%'
+                ],
+                correct: 0,
+                explanation: 'Минимальное значение 2.3 мм. Износ = (2.5 - 2.3) / 2.5 × 100% = 8%. Результат в пределах нормы.'
+            },
+            {
+                testId: 3,
+                type: 'theory',
+                question: 'Какой метод используется для обнаружения течей в трубках парогенератора?',
+                answers: [
+                    'Гелиевый течеискатель',
+                    'Визуальный осмотр',
+                    'Измерение давления',
+                    'Все вышеперечисленное'
+                ],
+                correct: 0,
+                explanation: 'Гелиевый течеискатель - наиболее чувствительный метод обнаружения микропротечек.'
+            },
+            {
+                testId: 3,
+                type: 'theory',
+                question: 'Как часто проводится контроль толщины трубок парогенератора?',
+                answers: [
+                    'Ежегодно',
+                    'Раз в 3 года',
+                    'Раз в 5 лет',
+                    'Раз в месяц'
+                ],
+                correct: 0,
+                explanation: 'Ежегодный контроль толщины проводится ультразвуковым методом во время плановых ремонтов.'
+            },
+            {
+                testId: 3,
+                type: 'calculation',
+                question: 'За месяц эксплуатации давление в парогенераторе изменилось с 6.3 МПа до 6.1 МПа. Рассчитайте изменение в процентах.',
+                answers: [
+                    '3.2%',
+                    '2.5%',
+                    '4%',
+                    '1.5%'
+                ],
+                correct: 0,
+                explanation: 'Изменение = (6.3 - 6.1) / 6.3 × 100% = 3.2%. В пределах допустимого дрейфа параметров.'
+            },
+            
+            // Осмотр турбины
+            {
+                testId: 4,
+                type: 'theory',
+                question: 'При осмотре лопаток турбины обнаружены микротрещины. Какие действия необходимы?',
+                answers: [
+                    'Немедленная замена поврежденных лопаток',
+                    'Продолжение эксплуатации с контролем',
+                    'Уменьшение нагрузки турбины',
+                    'Остановка для ремонта'
+                ],
+                correct: 3,
+                explanation: 'Обнаружение микротрещин требует остановки для детального обследования и ремонта. Эксплуатация с трещинами опасна.'
+            },
+            {
+                testId: 4,
+                type: 'calculation',
+                question: 'Вибрация турбины составляет 35 мкм. После балансировки вибрация снизилась до 25 мкм. На сколько процентов уменьшилась вибрация?',
+                answers: [
+                    '28.6%',
+                    '30%',
+                    '25%',
+                    '20%'
+                ],
+                correct: 0,
+                explanation: 'Уменьшение = (35 - 25) / 35 × 100% = 28.6%. Хороший результат балансировки.'
+            },
+            {
+                testId: 4,
+                type: 'theory',
+                question: 'Что проверяется при осмотре системы регулирования турбины?',
+                answers: [
+                    'Скорость срабатывания клапанов',
+                    'Точность позиционирования',
+                    'Герметичность',
+                    'Все вышеперечисленное'
+                ],
+                correct: 3,
+                explanation: 'Все параметры важны для надежной работы системы регулирования.'
+            },
+            {
+                testId: 4,
+                type: 'theory',
+                question: 'Какова нормальная частота вращения ротора турбины?',
+                answers: [
+                    '3000 об/мин',
+                    '1500 об/мин',
+                    '3600 об/мин',
+                    '6000 об/мин'
+                ],
+                correct: 0,
+                explanation: 'Частота вращения 3000 об/мин стандартна для турбогенераторов, подключенных к сетям 50 Гц.'
+            },
+            {
+                testId: 4,
+                type: 'calculation',
+                question: 'Мощность турбины составляет 1000 МВт. КПД турбины - 40%. Рассчитайте тепловую мощность, подводимую к турбине.',
+                answers: [
+                    '2500 МВт',
+                    '2400 МВт',
+                    '2600 МВт',
+                    '2300 МВт'
+                ],
+                correct: 0,
+                explanation: 'Тепловая мощность = Электрическая мощность / КПД = 1000 / 0.4 = 2500 МВт.'
+            }
+        ];
+        
+        // Глобальные переменные для текущего теста
+        let currentTestData = null;
+        let currentQuestions = [];
+        let currentQuestionIndex = 0;
+        let score = 0;
+        let timeLeft = 0;
+        let timerInterval = null;
+        let attemptsLeft = 3;
+        let selectedAnswer = null;
+        let testFailed = false;
+        let showingExplanation = false;
+        
+        // Three.js переменные
+        let scene, camera, renderer, controls;
+        
+        // DOM элементы
+        const tasksContainer = document.getElementById('tasks-container');
+        const testDialog = document.getElementById('test-dialog');
+        const closeDialogBtn = document.getElementById('close-dialog');
+        const testTitle = document.getElementById('test-title');
+        const timerDisplay = document.getElementById('timer');
+        const currentQuestionDisplay = document.getElementById('current-question');
+        const totalQuestionsDisplay = document.getElementById('total-questions');
+        const progressFill = document.getElementById('progress-fill');
+        const testAttemptsDisplay = document.getElementById('test-attempts');
+        const questionCounter = document.getElementById('question-counter');
+        const questionText = document.getElementById('question-text');
+        const answerOptions = document.getElementById('answer-options');
+        const attemptsLeftDisplay = document.getElementById('attempts-left');
+        const attemptsCounter = document.getElementById('attempts-counter');
+        const submitAnswerBtn = document.getElementById('submit-answer');
+        const nextQuestionBtn = document.getElementById('next-question');
+        const explanationContainer = document.getElementById('explanation-container');
+        const explanationText = document.getElementById('explanation-text');
+        const testInProgress = document.getElementById('test-in-progress');
+        const testResults = document.getElementById('test-results');
+        const resultsContainer = document.getElementById('results-container');
+        const componentInfo = document.getElementById('component-info');
+        const infoTitle = document.getElementById('info-title');
+        const infoIcon = document.getElementById('info-icon');
+        const infoContent = document.getElementById('info-content');
+        const infoClose = document.getElementById('info-close');
+        const resetStatsBtn = document.getElementById('reset-stats');
+        
+        // Инициализация игры
+        function initGame() {
+            init3DModel();
+            renderTasks();
+            setupEventListeners();
+            updateProgressDisplay();
+            loadGameState();
+        }
+        
+        // Загрузка состояния игры
+        function loadGameState() {
+            const savedState = localStorage.getItem('aes_game_state');
+            if (savedState) {
+                const state = JSON.parse(savedState);
+                gameState.completedTests = state.completedTests || 0;
+                gameState.skillLevel = state.skillLevel || 1;
+                gameState.totalScore = state.totalScore || 0;
+                gameState.averageScore = state.averageScore || 0;
+                updateProgressDisplay();
+            }
+        }
+        
+        // Сохранение состояния игры
+        function saveGameState() {
+            localStorage.setItem('aes_game_state', JSON.stringify({
+                completedTests: gameState.completedTests,
+                skillLevel: gameState.skillLevel,
+                totalScore: gameState.totalScore,
+                averageScore: gameState.averageScore
+            }));
+        }
+        
+        // Сброс статистики
+        function resetStatistics() {
+            if (confirm('Вы уверены, что хотите сбросить всю статистику? Весь прогресс будет потерян.')) {
+                gameState.completedTests = 0;
+                gameState.skillLevel = 1;
+                gameState.totalScore = 0;
+                gameState.averageScore = 0;
+                
+                // Очистка localStorage
+                localStorage.removeItem('aes_game_state');
+                for (let i = 1; i <= 8; i++) {
+                    localStorage.removeItem(`test_${i}_completed`);
+                    localStorage.removeItem(`test_${i}_score`);
+                    localStorage.removeItem(`test_${i}_failed`);
+                }
+                
+                updateProgressDisplay();
+                renderTasks();
+                alert('Статистика сброшена! Все данные удалены.');
+            }
+        }
+        
+        // Инициализация 3D модели с улучшенными компонентами
+        function init3DModel() {
+            // Создание сцены
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x0f172a);
+            
+            // Создание камеры
+            camera = new THREE.PerspectiveCamera(60, 800 / 500, 0.1, 1000);
+            camera.position.set(25, 15, 25);
+            
+            // Создание рендерера
+            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            renderer.setSize(800, 500);
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            document.getElementById('model-container-3d').appendChild(renderer.domElement);
+            
+            // Освещение
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+            scene.add(ambientLight);
+            
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            directionalLight.position.set(30, 40, 20);
+            directionalLight.castShadow = true;
+            directionalLight.shadow.mapSize.width = 2048;
+            directionalLight.shadow.mapSize.height = 2048;
+            scene.add(directionalLight);
+            
+            // Создание сложных моделей компонентов
+            
+            // 1. Корпус реактора с закругленными формами
+            const reactorGroup = new THREE.Group();
+            
+            // Основной корпус (цилиндр с закругленными краями)
+            const reactorGeometry = new THREE.CylinderGeometry(3, 3, 10, 32);
+            const reactorMaterial = new THREE.MeshPhongMaterial({ 
+                color: 0x4a5568,
+                metalness: 0.8,
+                roughness: 0.2,
+                flatShading: false
+            });
+            const reactor = new THREE.Mesh(reactorGeometry, reactorMaterial);
+            reactor.castShadow = true;
+            reactor.receiveShadow = true;
+            
+            // Верхняя часть реактора (полусфера)
+            const reactorTopGeometry = new THREE.SphereGeometry(3, 32, 16, 0, Math.PI * 2, 0, Math.PI / 2);
+            const reactorTop = new THREE.Mesh(reactorTopGeometry, reactorMaterial);
+            reactorTop.position.y = 5;
+            reactorTop.rotation.x = Math.PI;
+            reactorTop.castShadow = true;
+            
+            // Патрубки
+            const pipeGeometry = new THREE.CylinderGeometry(0.4, 0.4, 3, 16);
+            const pipeMaterial = new THREE.MeshPhongMaterial({ 
+                color: 0x2d3748,
+                metalness: 0.7,
+                roughness: 0.3
+            });
+            
+            // Входной и выходной патрубки
+            const inletPipe = new THREE.Mesh(pipeGeometry, pipeMaterial);
+            inletPipe.position.set(-2.5, 2, 0);
+            inletPipe.rotation.z = Math.PI / 2;
+            
+            const outletPipe = new THREE.Mesh(pipeGeometry, pipeMaterial);
+            outletPipe.position.set(2.5, 2, 0);
+            outletPipe.rotation.z = Math.PI / 2;
+            
+            reactorGroup.add(reactor, reactorTop, inletPipe, outletPipe);
+            reactorGroup.position.set(-15, 5, 0);
+            scene.add(reactorGroup);
+            
+            // Добавляем маркер для клика
+            reactorGroup.userData = { component: 'reactor' };
+            
+            // 2. Главный циркуляционный насос с детализацией
+            const pumpGroup = new THREE.Group();
+            
+            // Корпус насоса
+            const pumpBaseGeometry = new THREE.CylinderGeometry(1.5, 1.8, 2.5, 32);
+            const pumpMaterial = new THREE.MeshPhongMaterial({ 
+                color: 0x2d3748,
+                metalness: 0.9,
+                roughness: 0.1
+            });
+            const pumpBase = new THREE.Mesh(pumpBaseGeometry, pumpMaterial);
+            pumpBase.castShadow = true;
+            
+            // Электродвигатель
+            const motorGeometry = new THREE.CylinderGeometry(1.2, 1.2, 3, 32);
+            const motorMaterial = new THREE.MeshPhongMaterial({ 
+                color: 0x4c51bf,
+                metalness: 0.7,
+                roughness: 0.3
+            });
+            const motor = new THREE.Mesh(motorGeometry, motorMaterial);
+            motor.position.y = 2.75;
+            motor.castShadow = true;
+            
+            // Фланцы соединения
+            const flangeGeometry = new THREE.TorusGeometry(0.8, 0.1, 16, 32);
+            const flangeMaterial = new THREE.MeshPhongMaterial({ 
+                color: 0x718096,
+                metalness: 0.6,
+                roughness: 0.4
+            });
+            
+            const inletFlange = new THREE.Mesh(flangeGeometry, flangeMaterial);
+            inletFlange.position.set(-2.5, 0.5, 0);
+            inletFlange.rotation.x = Math.PI / 2;
+            
+            const outletFlange = new THREE.Mesh(flangeGeometry, flangeMaterial);
+            outletFlange.position.set(2.5, 0.5, 0);
+            outletFlange.rotation.x = Math.PI / 2;
+            
+            pumpGroup.add(pumpBase, motor, inletFlange, outletFlange);
+            pumpGroup.position.set(-5, 1.25, 5);
+            pumpGroup.userData = { component: 'main-pump' };
+            scene.add(pumpGroup);
+            
+            // 3. Парогенератор с трубной системой
+            const steamGenGroup = new THREE.Group();
+            
+            // Корпус
+            const steamGenBodyGeometry = new THREE.CylinderGeometry(2.5, 2.5, 12, 32);
+            const steamGenMaterial = new THREE.MeshPhongMaterial({ 
+                color: 0x718096,
+                metalness: 0.6,
+                roughness: 0.4
+            });
+            const steamGenBody = new THREE.Mesh(steamGenBodyGeometry, steamGenMaterial);
+            steamGenBody.castShadow = true;
+            steamGenBody.receiveShadow = true;
+            
+            // Теплообменная система (упрощенная)
+            const heatExchangerGeometry = new THREE.BoxGeometry(5, 8, 3);
+            const heatExchangerMaterial = new THREE.MeshPhongMaterial({ 
+                color: 0x4a5568,
+                wireframe: false,
+                transparent: true,
+                opacity: 0.7
+            });
+            const heatExchanger = new THREE.Mesh(heatExchangerGeometry, heatExchangerMaterial);
+            heatExchanger.position.y = 0;
+            
+            steamGenGroup.add(steamGenBody, heatExchanger);
+            steamGenGroup.position.set(0, 6, 0);
+            steamGenGroup.userData = { component: 'steam-generator' };
+            scene.add(steamGenGroup);
+            
+            // 4. Турбина с лопатками
+            const turbineGroup = new THREE.Group();
+            
+            // Корпус турбины
+            const turbineHousingGeometry = new THREE.CylinderGeometry(2, 2, 8, 32);
+            const turbineHousingMaterial = new THREE.MeshPhongMaterial({ 
+                color: 0x4c51bf,
+                metalness: 0.9,
+                roughness: 0.1
+            });
+            const turbineHousing = new THREE.Mesh(turbineHousingGeometry, turbineHousingMaterial);
+            turbineHousing.rotation.z = Math.PI / 2;
+            turbineHousing.castShadow = true;
+            
+            // Ротор турбины (визуализация)
+            const rotorGeometry = new THREE.CylinderGeometry(1.5, 1.5, 7, 32);
+            const rotorMaterial = new THREE.MeshPhongMaterial({ 
+                color: 0xe53e3e,
+                metalness: 0.8,
+                roughness: 0.2
+            });
+            const rotor = new THREE.Mesh(rotorGeometry, rotorMaterial);
+            rotor.rotation.z = Math.PI / 2;
+            
+            turbineGroup.add(turbineHousing, rotor);
+            turbineGroup.position.set(10, 1, 0);
+            turbineGroup.userData = { component: 'turbine' };
+            scene.add(turbineGroup);
+            
+            // 5. Конденсатор с трубками
+            const condenserGroup = new THREE.Group();
+            
+            const condenserGeometry = new THREE.BoxGeometry(6, 5, 4);
+            const condenserMaterial = new THREE.MeshPhongMaterial({ 
+                color: 0x2d3748,
+                metalness: 0.5,
+                roughness: 0.5
+            });
+            const condenser = new THREE.Mesh(condenserGeometry, condenserMaterial);
+            condenser.castShadow = true;
+            condenser.receiveShadow = true;
+            
+            // Трубки охлаждения (упрощенно)
+            for (let i = 0; i < 10; i++) {
+                const tubeGeometry = new THREE.CylinderGeometry(0.05, 0.05, 5, 8);
+                const tube = new THREE.Mesh(tubeGeometry, pipeMaterial);
+                tube.position.set(-2 + i * 0.4, 0, 0);
+                tube.rotation.z = Math.PI / 2;
+                condenserGroup.add(tube);
+            }
+            
+            condenserGroup.add(condenser);
+            condenserGroup.position.set(20, 2.5, 0);
+            condenserGroup.userData = { component: 'condenser' };
+            scene.add(condenserGroup);
+            
+            // 6. Генератор
+            const generatorGroup = new THREE.Group();
+            
+            const generatorBodyGeometry = new THREE.CylinderGeometry(2, 2, 5, 32);
+            const generatorBodyMaterial = new THREE.MeshPhongMaterial({ 
+                color: 0xe53e3e,
+                metalness: 0.7,
+                roughness: 0.3
+            });
+            const generatorBody = new THREE.Mesh(generatorBodyGeometry, generatorBodyMaterial);
+            generatorBody.castShadow = true;
+            
+            // Система охлаждения
+            const coolingGeometry = new THREE.TorusGeometry(2.2, 0.3, 16, 32);
+            const coolingMaterial = new THREE.MeshPhongMaterial({ 
+                color: 0x38bdf8,
+                metalness: 0.6,
+                roughness: 0.4
+            });
+            const coolingRing = new THREE.Mesh(coolingGeometry, coolingMaterial);
+            coolingRing.position.y = 1;
+            
+            generatorGroup.add(generatorBody, coolingRing);
+            generatorGroup.position.set(10, 2.5, -5);
+            generatorGroup.userData = { component: 'generator' };
+            scene.add(generatorGroup);
+            
+            // 7. Трансформатор с радиаторами
+            const transformerGroup = new THREE.Group();
+            
+            const transformerCoreGeometry = new THREE.BoxGeometry(3, 5, 2);
+            const transformerCoreMaterial = new THREE.MeshPhongMaterial({ 
+                color: 0xdd6b20,
+                metalness: 0.6,
+                roughness: 0.4
+            });
+            const transformerCore = new THREE.Mesh(transformerCoreGeometry, transformerCoreMaterial);
+            transformerCore.castShadow = true;
+            transformerCore.receiveShadow = true;
+            
+            // Радиаторы охлаждения
+            for (let i = 0; i < 3; i++) {
+                const radiatorGeometry = new THREE.BoxGeometry(0.3, 4, 1.5);
+                const radiator = new THREE.Mesh(radiatorGeometry, pipeMaterial);
+                radiator.position.set(-1 + i, -0.5, 1.5);
+                transformerGroup.add(radiator);
+            }
+            
+            transformerGroup.add(transformerCore);
+            transformerGroup.position.set(20, 2.5, -6);
+            transformerGroup.userData = { component: 'transformer' };
+            scene.add(transformerGroup);
+            
+            // 8. Градирня (гиперболоидная форма)
+            const coolingTowerGroup = new THREE.Group();
+            
+            // Гиперболоид
+            const points = [];
+            const detail = 32;
+            for (let i = 0; i <= detail; i++) {
+                const angle = (i / detail) * Math.PI * 2;
+                const radius = 4 - Math.sin(angle * 2) * 0.5;
+                points.push(new THREE.Vector2(radius, i * 0.5));
+            }
+            
+            const towerGeometry = new THREE.LatheGeometry(points, 32);
+            const towerMaterial = new THREE.MeshPhongMaterial({ 
+                color: 0xa0aec0,
+                metalness: 0.3,
+                roughness: 0.7
+            });
+            const tower = new THREE.Mesh(towerGeometry, towerMaterial);
+            tower.scale.set(1, 3, 1);
+            tower.castShadow = true;
+            tower.receiveShadow = true;
+            
+            coolingTowerGroup.add(tower);
+            coolingTowerGroup.position.set(5, 7.5, 10);
+            coolingTowerGroup.userData = { component: 'cooling-tower' };
+            scene.add(coolingTowerGroup);
+            
+            // Создание трубопроводов между компонентами
+            createSmoothPipes();
+            
+            // Создание пола
+            const floorGeometry = new THREE.PlaneGeometry(50, 40);
+            const floorMaterial = new THREE.MeshPhongMaterial({ 
+                color: 0x1e293b,
+                side: THREE.DoubleSide
+            });
+            const floor = new THREE.Mesh(floorGeometry, floorMaterial);
+            floor.rotation.x = Math.PI / 2;
+            floor.position.y = -0.5;
+            floor.receiveShadow = true;
+            scene.add(floor);
+            
+            // Сетка для масштаба
+            const gridHelper = new THREE.GridHelper(50, 50, 0x334155, 0x475569);
+            gridHelper.position.y = -0.49;
+            scene.add(gridHelper);
+            
+            // Настройка OrbitControls
+            controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.05;
+            controls.minDistance = 10;
+            controls.maxDistance = 50;
+            controls.maxPolarAngle = Math.PI / 2;
+            controls.target.set(0, 5, 0);
+            
+            // Анимация
+            function animate() {
+                requestAnimationFrame(animate);
+                
+                // Вращение компонентов
+                rotor.rotation.y += 0.02;
+                generatorBody.rotation.y += 0.01;
+                
+                controls.update();
+                renderer.render(scene, camera);
+            }
+            animate();
+            
+            // Обработка кликов на компоненты
+            renderer.domElement.addEventListener('click', onModelClick);
+            
+            // Обработка изменения размера окна
+            window.addEventListener('resize', () => {
+                camera.aspect = 800 / 500;
+                camera.updateProjectionMatrix();
+                renderer.setSize(800, 500);
+            });
+        }
+        
+        // Создание плавных трубопроводов
+        function createSmoothPipes() {
+            const pipeMaterial = new THREE.MeshPhongMaterial({ 
+                color: 0x4a5568,
+                metalness: 0.8,
+                roughness: 0.2
+            });
+            
+            // От реактора к парогенератору
+            createCurvedPipe(-12, 5, 0, -2.5, 6, 0, 0.6);
+            
+            // От парогенератора к турбине
+            createCurvedPipe(2.5, 6, 0, 6, 1, 0, 0.5);
+            
+            // От турбины к конденсатору
+            createCurvedPipe(14, 1, 0, 17, 2.5, 0, 0.5);
+            
+            // От конденсатора к градирне
+            createCurvedPipe(23, 2.5, 0, 5, 2.5, 10, 0.5);
+            
+            // От градирни к насосу
+            createCurvedPipe(5, 2.5, 7, -5, 1.25, 5, 0.5);
+            
+            // От насоса к реактору
+            createCurvedPipe(-5, 1.25, 2, -12, 5, 0, 0.6);
+        }
+        
+        // Создание изогнутой трубы
+        function createCurvedPipe(x1, y1, z1, x2, y2, z2, radius) {
+            const curve = new THREE.CatmullRomCurve3([
+                new THREE.Vector3(x1, y1, z1),
+                new THREE.Vector3((x1+x2)/2, (y1+y2)/2 + 2, (z1+z2)/2),
+                new THREE.Vector3(x2, y2, z2)
+            ]);
+            
+            const tubeGeometry = new THREE.TubeGeometry(curve, 20, radius, 8, false);
+            const tubeMaterial = new THREE.MeshPhongMaterial({ 
+                color: 0x4a5568,
+                metalness: 0.8,
+                roughness: 0.2
+            });
+            const tube = new THREE.Mesh(tubeGeometry, tubeMaterial);
+            tube.castShadow = true;
+            scene.add(tube);
+        }
+        
+        // Обработка клика на модель
+        function onModelClick(event) {
+            const mouse = new THREE.Vector2();
+            const rect = renderer.domElement.getBoundingClientRect();
+            
+            mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+            mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+            
+            const raycaster = new THREE.Raycaster();
+            raycaster.setFromCamera(mouse, camera);
+            
+            // Проверяем все объекты в сцене
+            const intersects = raycaster.intersectObjects(scene.children, true);
+            
+            if (intersects.length > 0) {
+                let clickedObject = intersects[0].object;
+                
+                // Поднимаемся по иерархии родителей, чтобы найти группу с userData
+                while (clickedObject && !clickedObject.userData.component) {
+                    clickedObject = clickedObject.parent;
+                }
+                
+                if (clickedObject && clickedObject.userData.component) {
+                    showComponentInfo(clickedObject.userData.component);
+                }
+            }
+        }
+        
+        // Показать информацию о компоненте
+        function showComponentInfo(componentId) {
+            const components = {
+                'reactor': {
+                    title: 'Корпус реактора',
+                    icon: 'fas fa-radiation-alt',
+                    description: 'Герметичный стальной сосуд высокого давления, содержащий активную зону с ядерным топливом. Толщина стенок - 200 мм, рабочее давление - 16 МПа, температура - 290°C. Изготавливается из специальной стали, устойчивой к радиационному воздействию и высоким температурам.',
+                    purpose: 'Содержание активной зоны, обеспечение теплообмена, защита от радиации.'
+                },
+                'main-pump': {
+                    title: 'Главный циркуляционный насос',
+                    icon: 'fas fa-tint',
+                    description: 'Обеспечивает циркуляцию теплоносителя через активную зону реактора. Производительность - 20 000 м³/ч, мощность электродвигателя - 6 МВт. Имеет систему масляного охлаждения и уплотнения для предотвращения утечек. Работает при температуре до 320°C.',
+                    purpose: 'Циркуляция теплоносителя в первом контуре, отвод тепла от активной зоны.'
+                },
+                'steam-generator': {
+                    title: 'Парогенератор',
+                    icon: 'fas fa-fire',
+                    description: 'Теплообменник горизонтального типа с U-образными трубками. Передает тепло от первого контура воде второго контура, генерируя пар. Содержит около 11 000 трубок диаметром 16 мм. Производительность пара - 1470 кг/с при температуре 280°C.',
+                    purpose: 'Генерация пара для турбины, разделение радиоактивного и нерадиоактивного контуров.'
+                },
+                'turbine': {
+                    title: 'Паровая турбина',
+                    icon: 'fas fa-cogs',
+                    description: 'Многоступенчатая турбина, преобразующая энергию пара в механическую энергию вращения. Частота вращения - 3000 об/мин, мощность - 1000 МВт. Состоит из цилиндров высокого, среднего и низкого давления. Лопатки изготавливаются из жаропрочных сплавов.',
+                    purpose: 'Преобразование тепловой энергии пара в механическую энергию.'
+                },
+                'condenser': {
+                    title: 'Конденсатор',
+                    icon: 'fas fa-snowflake',
+                    description: 'Поверхностный теплообменник, в котором отработавший пар конденсируется в воду. Поддерживает вакуум 3-5 кПа для повышения КПД турбины. Охлаждается циркуляционной водой из водоема. Площадь теплообмена - 50 000 м².',
+                    purpose: 'Конденсация отработавшего пара, поддержание вакуума в турбине.'
+                },
+                'generator': {
+                    title: 'Турбогенератор',
+                    icon: 'fas fa-bolt',
+                    description: 'Синхронный генератор с водородным охлаждением. Преобразует механическую энергию вращения турбины в электрическую. Мощность - 1000 МВт, напряжение - 24 кВ. Имеет систему возбуждения и автоматического регулирования. КПД - 98.8%.',
+                    purpose: 'Выработка электрической энергии.'
+                },
+                'transformer': {
+                    title: 'Блочный трансформатор',
+                    icon: 'fas fa-bolt-lightning',
+                    description: 'Повышающий трансформатор для передачи электроэнергии в сеть. Мощность - 1200 МВА, напряжение - 24/330 кВ. Имеет систему масляного охлаждения с принудительной циркуляцией. Масло служит одновременно для охлаждения и изоляции.',
+                    purpose: 'Повышение напряжения для передачи электроэнергии.'
+                },
+                'cooling-tower': {
+                    title: 'Градирня',
+                    icon: 'fas fa-cloud',
+                    description: 'Устройство для охлаждения циркуляционной воды методом испарительного охлаждения. Высота - 150 м, диаметр основания - 120 м. Принцип работы основан на естественной тяге. Снижает температуру воды с 35°C до 25°C.',
+                    purpose: 'Охлаждение циркуляционной воды системы технического водоснабжения.'
+                }
+            };
+            
+            const component = components[componentId];
+            if (!component) return;
+            
+            infoIcon.innerHTML = `<i class="${component.icon}"></i>`;
+            infoTitle.textContent = component.title;
+            
+            infoContent.innerHTML = `
+                <p><strong>Назначение:</strong> ${component.purpose}</p>
+                <p>${component.description}</p>
+            `;
+            
+            componentInfo.classList.add('active');
+        }
+        
+        // Отрисовка заданий
+        function renderTasks() {
+            tasksContainer.innerHTML = '';
+            
+            tests.forEach(test => {
+                const isCompleted = localStorage.getItem(`test_${test.id}_completed`) === 'true';
+                const score = localStorage.getItem(`test_${test.id}_score`) || '0';
+                const isFailed = localStorage.getItem(`test_${test.id}_failed`) === 'true';
+                
+                const taskElement = document.createElement('div');
+                taskElement.className = `task-card ${isCompleted ? 'completed' : ''} ${isFailed ? 'failed' : ''}`;
+                taskElement.dataset.testId = test.id;
+                
+                let statusText = 'Доступен';
+                let statusClass = 'available';
+                
+                if (isCompleted) {
+                    statusText = 'Выполнен';
+                    statusClass = 'completed';
+                } else if (isFailed) {
+                    statusText = 'Не пройден';
+                    statusClass = 'failed';
+                }
+                
+                taskElement.innerHTML = `
+                    <div class="task-header">
+                        <div class="task-title">${test.title}</div>
+                        <div class="task-status ${statusClass}">
+                            ${statusText}
+                        </div>
+                    </div>
+                    <div class="task-desc">${test.description}</div>
+                    <div class="task-meta">
+                        <div><i class="far fa-clock"></i> ${Math.floor(test.timeLimit / 60)} мин</div>
+                        <div><i class="fas fa-tasks"></i> ${test.questions} заданий</div>
+                        <div><i class="fas fa-star"></i> ${score}%</div>
+                    </div>
+                `;
+                
+                taskElement.addEventListener('click', () => startTest(test.id));
+                tasksContainer.appendChild(taskElement);
+            });
+        }
+        
+        // Начать тест
+        function startTest(testId) {
+            if (gameState.testInProgress) {
+                alert('Завершите текущую проверку перед началом новой.');
+                return;
+            }
+            
+            const test = tests.find(t => t.id === testId);
+            if (!test) return;
+            
+            currentTestData = test;
+            gameState.testInProgress = true;
+            testFailed = false;
+            showingExplanation = false;
+            
+            // Сброс переменных теста
+            currentQuestionIndex = 0;
+            score = 0;
+            timeLeft = test.timeLimit;
+            attemptsLeft = 3;
+            selectedAnswer = null;
+            
+            // Получение вопросов для теста
+            currentQuestions = questionsDatabase.filter(q => q.testId === testId);
+            
+            // Перемешиваем вопросы
+            currentQuestions = [...currentQuestions].sort(() => Math.random() - 0.5);
+            
+            // Настройка диалога
+            testTitle.textContent = `ТО: ${test.title}`;
+            totalQuestionsDisplay.textContent = test.questions;
+            testAttemptsDisplay.textContent = attemptsLeft;
+            
+            // Показываем тест, скрываем результаты
+            testInProgress.style.display = 'block';
+            testResults.style.display = 'none';
+            explanationContainer.classList.remove('active');
+            nextQuestionBtn.style.display = 'none';
+            submitAnswerBtn.style.display = 'flex';
+            
+            // Запуск таймера
+            startTimer();
+            
+            // Отображение первого вопроса
+            displayQuestion();
+            
+            // Показ диалога
+            testDialog.classList.add('active');
+        }
+        
+        // Запуск таймера
+        function startTimer() {
+            if (timerInterval) clearInterval(timerInterval);
+            
+            updateTimerDisplay();
+            
+            timerInterval = setInterval(() => {
+                timeLeft--;
+                updateTimerDisplay();
+                
+                if (timeLeft <= 0) {
+                    finishTest();
+                }
+            }, 1000);
+        }
+        
+        // Обновление отображения таймера
+        function updateTimerDisplay() {
+            const minutes = Math.floor(timeLeft / 60);
+            const seconds = timeLeft % 60;
+            timerDisplay.textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+            
+            // Изменение цвета при малом времени
+            if (timeLeft < 60) {
+                timerDisplay.style.color = '#f87171';
+            } else if (timeLeft < 120) {
+                timerDisplay.style.color = '#fbbf24';
+            } else {
+                timerDisplay.style.color = '#38bdf8';
+            }
+        }
+        
+        // Отображение вопроса
+        function displayQuestion() {
+            if (currentQuestionIndex >= currentQuestions.length) {
+                finishTest();
+                return;
+            }
+            
+            const question = currentQuestions[currentQuestionIndex];
+            
+            // Обновление счетчиков
+            currentQuestionDisplay.textContent = currentQuestionIndex + 1;
+            questionCounter.textContent = `Задание ${currentQuestionIndex + 1} из ${currentQuestions.length}`;
+            progressFill.style.width = `${((currentQuestionIndex + 1) / currentQuestions.length) * 100}%`;
+            
+            // Отображение вопроса
+            questionText.textContent = question.question;
+            
+            // Очистка и создание вариантов ответов
+            answerOptions.innerHTML = '';
+            selectedAnswer = null;
+            
+            const letters = ['A', 'B', 'C', 'D'];
+            
+            // Перемешиваем ответы, но запоминаем правильный
+            const shuffledAnswers = [...question.answers];
+            const correctIndex = question.correct;
+            const correctAnswer = shuffledAnswers[correctIndex];
+            
+            // Перемешиваем массив
+            for (let i = shuffledAnswers.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [shuffledAnswers[i], shuffledAnswers[j]] = [shuffledAnswers[j], shuffledAnswers[i]];
+            }
+            
+            // Находим новый индекс правильного ответа
+            const newCorrectIndex = shuffledAnswers.indexOf(correctAnswer);
+            
+            // Сохраняем новый правильный индекс в объекте вопроса
+            question.shuffledCorrect = newCorrectIndex;
+            
+            // Создаем варианты ответов
+            shuffledAnswers.forEach((answer, index) => {
+                const option = document.createElement('div');
+                option.className = 'answer-option';
+                option.dataset.index = index;
+                
+                option.innerHTML = `
+                    <div class="answer-letter">${letters[index]}</div>
+                    <div>${answer}</div>
+                `;
+                
+                option.addEventListener('click', () => selectAnswer(index));
+                answerOptions.appendChild(option);
+            });
+            
+            // Сброс попыток для нового вопроса
+            attemptsLeft = 3;
+            attemptsLeftDisplay.textContent = attemptsLeft;
+            attemptsCounter.style.display = 'block';
+            
+            // Сброс кнопок и пояснения
+            explanationContainer.classList.remove('active');
+            nextQuestionBtn.style.display = 'none';
+            submitAnswerBtn.style.display = 'flex';
+            submitAnswerBtn.disabled = true;
+            submitAnswerBtn.innerHTML = '<i class="fas fa-check-circle"></i> Проверить';
+            showingExplanation = false;
+        }
+        
+        // Выбор ответа
+        function selectAnswer(index) {
+            if (showingExplanation) return;
+            
+            // Снимаем выделение со всех вариантов
+            document.querySelectorAll('.answer-option').forEach(option => {
+                option.classList.remove('selected');
+            });
+            
+            // Выделяем выбранный вариант
+            const selectedOption = document.querySelector(`.answer-option[data-index="${index}"]`);
+            selectedOption.classList.add('selected');
+            
+            selectedAnswer = index;
+            submitAnswerBtn.disabled = false;
+        }
+        
+        // Проверка ответа
+        function checkAnswer() {
+            if (selectedAnswer === null) {
+                alert('Выберите вариант ответа!');
+                return;
+            }
+            
+            const question = currentQuestions[currentQuestionIndex];
+            const isCorrect = selectedAnswer === question.shuffledCorrect;
+            
+            if (isCorrect) {
+                // Правильный ответ
+                score += 20;
+                
+                // Подсветка правильного ответа
+                document.querySelector(`.answer-option[data-index="${selectedAnswer}"]`).classList.add('correct');
+                
+                // Отключаем все варианты
+                document.querySelectorAll('.answer-option').forEach(option => {
+                    option.classList.add('disabled');
+                    option.style.pointerEvents = 'none';
+                });
+                
+                // Показываем пояснение
+                explanationText.textContent = question.explanation;
+                explanationContainer.classList.add('active');
+                
+                // Меняем кнопки
+                submitAnswerBtn.style.display = 'none';
+                nextQuestionBtn.style.display = 'flex';
+                showingExplanation = true;
+                
+            } else {
+                // Неправильный ответ
+                attemptsLeft--;
+                attemptsLeftDisplay.textContent = attemptsLeft;
+                testAttemptsDisplay.textContent = attemptsLeft;
+                
+                // Подсветка неправильного ответа
+                document.querySelector(`.answer-option[data-index="${selectedAnswer}"]`).classList.add('incorrect');
+                
+                // Отключаем только выбранный неправильный вариант
+                document.querySelector(`.answer-option[data-index="${selectedAnswer}"]`).classList.add('disabled');
+                document.querySelector(`.answer-option[data-index="${selectedAnswer}"]`).style.pointerEvents = 'none';
+                
+                // Сбрасываем выбор
+                selectedAnswer = null;
+                submitAnswerBtn.disabled = true;
+                
+                if (attemptsLeft <= 0) {
+                    // Попытки закончились
+                    testFailed = true;
+                    
+                    // Показываем правильный ответ
+                    const correctOption = document.querySelector(`.answer-option[data-index="${question.shuffledCorrect}"]`);
+                    if (correctOption) {
+                        correctOption.classList.add('correct');
+                    }
+                    
+                    // Показываем пояснение
+                    explanationText.textContent = question.explanation;
+                    explanationContainer.classList.add('active');
+                    
+                    setTimeout(() => finishTest(), 2000);
+                }
+            }
+        }
+        
+        // Переход к следующему вопросу
+        function goToNextQuestion() {
+            currentQuestionIndex++;
+            displayQuestion();
+        }
+        
+        // Завершение теста
+        function finishTest() {
+            clearInterval(timerInterval);
+            gameState.testInProgress = false;
+            
+            // Расчет результатов
+            const totalPossibleScore = currentQuestions.length * 20;
+            const percentage = Math.round((score / totalPossibleScore) * 100);
+            
+            // Показываем результаты
+            showResults(percentage, score, totalPossibleScore);
+            
+            if (!testFailed && percentage >= 70) {
+                // Сохранение результатов только если тест пройден
+                localStorage.setItem(`test_${currentTestData.id}_completed`, 'true');
+                localStorage.setItem(`test_${currentTestData.id}_score`, percentage.toString());
+                localStorage.removeItem(`test_${currentTestData.id}_failed`);
+                
+                // Обновление статистики игры
+                gameState.completedTests++;
+                gameState.totalScore += percentage;
+                gameState.averageScore = gameState.completedTests > 0 
+                    ? Math.round(gameState.totalScore / gameState.completedTests) 
+                    : 0;
+                
+                if (percentage >= 80 && gameState.skillLevel < 5) {
+                    gameState.skillLevel++;
+                }
+                
+                saveGameState();
+            } else {
+                // Тест не пройден
+                localStorage.setItem(`test_${currentTestData.id}_failed`, 'true');
+            }
+            
+            // Обновление интерфейса
+            updateProgressDisplay();
+            renderTasks();
+        }
+        
+        // Показать результаты теста
+        function showResults(percentage, score, totalPossibleScore) {
+            testInProgress.style.display = 'none';
+            testResults.style.display = 'block';
+            
+            const isSuccess = !testFailed && percentage >= 70;
+            const timeUsed = currentTestData.timeLimit - timeLeft;
+            const minutesUsed = Math.floor(timeUsed / 60);
+            const secondsUsed = timeUsed % 60;
+            
+            resultsContainer.className = `results-container ${isSuccess ? 'result-success' : 'result-failure'}`;
+            
+            if (testFailed) {
+                resultsContainer.innerHTML = `
+                    <div class="result-icon">
+                        <i class="fas fa-times-circle"></i>
+                    </div>
+                    <h2 class="result-title">Техосмотр не пройден</h2>
+                    <p>Вы исчерпали все попытки на одном из заданий.</p>
+                    <p style="margin: 15px 0; color: #fca5a5; font-size: 1.1rem;">
+                        Технический осмотр требует более внимательного подхода.<br>
+                        Повторите процедуры и попробуйте снова.
+                    </p>
+                    
+                    <div class="result-stats">
+                        <div class="stat-card">
+                            <div class="stat-value">${percentage}%</div>
+                            <div class="stat-label">Результат</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value">${score}/${totalPossibleScore}</div>
+                            <div class="stat-label">Баллы</div>
+                        </div>
+                    </div>
+                    
+                    <div class="test-actions" style="margin-top: 30px;">
+                        <button class="action-btn primary-btn" id="restart-test">
+                            <i class="fas fa-redo"></i> Попробовать снова
+                        </button>
+                        <button class="action-btn secondary-btn" id="close-test">
+                            <i class="fas fa-list"></i> Другие проверки
+                        </button>
+                    </div>
+                `;
+            } else {
+                resultsContainer.innerHTML = `
+                    <div class="result-icon">
+                        <i class="fas ${isSuccess ? 'fa-check-circle' : 'fa-exclamation-circle'}"></i>
+                    </div>
+                    <h2 class="result-title">${isSuccess ? 'Техосмотр пройден!' : 'Проверка завершена'}</h2>
+                    <p>${isSuccess ? 
+                        'Оборудование соответствует требованиям. Допущено к эксплуатации.' : 
+                        'Требуется дополнительная проверка. Результат ниже нормы.'}</p>
+                    
+                    <div class="result-stats">
+                        <div class="stat-card">
+                            <div class="stat-value">${percentage}%</div>
+                            <div class="stat-label">Успешность</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value">${score}/${totalPossibleScore}</div>
+                            <div class="stat-label">Баллы</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value">${minutesUsed}:${secondsUsed.toString().padStart(2, '0')}</div>
+                            <div class="stat-label">Время</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value">${isSuccess ? '✓' : '✗'}</div>
+                            <div class="stat-label">Статус</div>
+                        </div>
+                    </div>
+                    
+                    <div class="test-actions" style="margin-top: 30px;">
+                        <button class="action-btn primary-btn" id="close-test">
+                            <i class="fas fa-check"></i> ${isSuccess ? 'Завершить' : 'Понятно'}
+                        </button>
+                    </div>
+                `;
+            }
+            
+            // Настройка кнопок результатов
+            if (document.getElementById('restart-test')) {
+                document.getElementById('restart-test').addEventListener('click', () => {
+                    testDialog.classList.remove('active');
+                    setTimeout(() => startTest(currentTestData.id), 300);
+                });
+            }
+            
+            document.getElementById('close-test').addEventListener('click', () => {
+                testDialog.classList.remove('active');
+            });
+        }
+        
+        // Настройка обработчиков событий
+        function setupEventListeners() {
+            closeDialogBtn.addEventListener('click', () => {
+                if (gameState.testInProgress) {
+                    if (confirm('Проверка еще не завершена. Вы уверены, что хотите закрыть? Весь прогресс будет потерян.')) {
+                        clearInterval(timerInterval);
+                        gameState.testInProgress = false;
+                        testDialog.classList.remove('active');
+                    }
+                } else {
+                    testDialog.classList.remove('active');
+                }
+            });
+            
+            submitAnswerBtn.addEventListener('click', checkAnswer);
+            nextQuestionBtn.addEventListener('click', goToNextQuestion);
+            
+            infoClose.addEventListener('click', () => {
+                componentInfo.classList.remove('active');
+            });
+            
+            resetStatsBtn.addEventListener('click', resetStatistics);
+            
+            // Закрытие диалога при клике вне его
+            testDialog.addEventListener('click', (e) => {
+                if (e.target === testDialog) {
+                    closeDialogBtn.click();
+                }
+            });
+        }
+        
+        // Обновление отображения прогресса
+        function updateProgressDisplay() {
+            document.getElementById('completed-tests').textContent = `${gameState.completedTests}/${gameState.totalTests}`;
+            document.getElementById('skill-level').textContent = gameState.skillLevel;
+            document.getElementById('average-score').textContent = `${gameState.averageScore}%`;
+        }
+        
+        // Инициализация игры при загрузке страницы
+        document.addEventListener('DOMContentLoaded', initGame);
+    </script>
+</body>
+</html>
